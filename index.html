@@ -1,0 +1,59 @@
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+  // ВСТАВТЕ ВАШІ ДАНІ З FIREBASE ТУТ:
+  const firebaseConfig = {
+    apiKey: "ВАШ_API_KEY",
+    authDomain: "PROJECT_ID.firebaseapp.com",
+    projectId: "PROJECT_ID",
+    storageBucket: "PROJECT_ID.appspot.com",
+    messagingSenderId: "ID",
+    appId: "APP_ID"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // Функція реєстрації/входу
+  function login() {
+    const email = prompt("Введіть пошту:");
+    const pass = prompt("Введіть пароль:");
+    auth.signInWithEmailAndPassword(email, pass).catch(() => {
+        auth.createUserWithEmailAndPassword(email, pass);
+    });
+  }
+
+  // Запис у базу даних
+  function addTransaction(type) {
+    const user = auth.currentUser;
+    if (!user) { alert("Будь ласка, увійдіть!"); return; }
+
+    const amount = document.getElementById('amount').value;
+    const note = document.getElementById('note').value;
+
+    db.collection("users").doc(user.uid).collection("transactions").add({
+      type: type,
+      amount: parseFloat(amount),
+      note: note || "Без назви",
+      date: new Date().toLocaleString('uk-UA')
+    }).then(() => {
+      document.getElementById('amount').value = '';
+      document.getElementById('note').value = '';
+    });
+  }
+
+  // Слухач бази даних (оновлює список автоматично)
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      db.collection("users").doc(user.uid).collection("transactions")
+        .orderBy("date", "desc").onSnapshot(snapshot => {
+          renderHistory(snapshot.docs.map(doc => doc.data()));
+        });
+    } else {
+      login(); // Якщо не залогінений — просимо вхід
+    }
+  });
+</script>
