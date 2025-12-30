@@ -3,45 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Pro Бухгалтерія</title>
+    <title>Мій Баланс</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         :root {
-            --bg: #000000; --card: #1c1c1e; --accent: #ff9f0a; --green: #32d74b; --red: #ff453a; --gray: #2c2c2e;
+            --bg: #000000; --card: #1c1c1e; --green: #32d74b; --red: #ff453a; --gray: #2c2c2e; --accent: #0a84ff;
         }
-        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; }
+        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 20px; }
         
-        /* Дисплей */
-        .display-section { background: var(--card); padding: 25px; border-radius: 25px; text-align: right; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        #expression { color: #8e8e93; font-size: 18px; margin-bottom: 5px; min-height: 22px; }
-        #result { font-size: 48px; font-weight: 200; overflow: hidden; }
+        /* Картка загального балансу */
+        .balance-card {
+            background: linear-gradient(180deg, #2c2c2e 0%, #1c1c1e 100%);
+            padding: 30px 20px; border-radius: 25px; text-align: center; margin-bottom: 25px;
+            border: 1px solid #3a3a3c;
+        }
+        #total-balance { font-size: 42px; font-weight: 700; margin-top: 10px; color: white; }
+        .label { color: #8e8e93; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Кнопки калькулятора */
-        .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-        button { height: 65px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; transition: 0.2s; color: white; background: var(--gray); }
-        button:active { transform: scale(0.9); opacity: 0.8; }
-        .op { background: var(--accent); color: white; }
-        .special { background: #a5a5a5; color: black; }
-        .zero { grid-column: span 2; border-radius: 35px; }
-
-        /* Форма запису */
-        .save-box { background: var(--card); padding: 20px; border-radius: 25px; margin-bottom: 20px; }
-        input { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--gray); color: white; padding: 12px 0; font-size: 18px; outline: none; margin-bottom: 20px; }
+        /* Форма введення */
+        .input-box { background: var(--card); padding: 20px; border-radius: 25px; margin-bottom: 20px; }
+        input { 
+            width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--gray); 
+            color: white; padding: 15px 0; font-size: 18px; outline: none; margin-bottom: 15px;
+        }
+        input::placeholder { color: #48484a; }
+        
         .save-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .btn-save { height: 55px; border-radius: 15px; font-weight: 600; font-size: 16px; }
+        button { 
+            height: 55px; border-radius: 16px; border: none; font-weight: 600; font-size: 16px; 
+            cursor: pointer; transition: 0.2s; 
+        }
+        button:active { transform: scale(0.96); opacity: 0.9; }
         .in { background: var(--green); color: black; }
         .out { background: var(--red); color: white; }
 
         /* Керування даними */
-        .data-tools { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn-tool { flex: 1; height: 35px; font-size: 12px; background: #3a3a3c; border-radius: 8px; }
+        .tools { display: flex; gap: 10px; margin-bottom: 30px; }
+        .btn-tool { flex: 1; height: 40px; font-size: 12px; background: var(--gray); color: #8e8e93; border-radius: 10px; }
 
-        /* Список чеків */
-        .history-item { background: var(--card); padding: 15px; border-radius: 18px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.3s ease; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .item-info { display: flex; flex-direction: column; }
+        /* Історія */
+        .history-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; padding-left: 5px; }
+        .item { 
+            background: var(--card); padding: 16px; border-radius: 18px; margin-bottom: 10px; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .item-info { display: flex; flex-direction: column; gap: 4px; }
         .item-note { font-weight: 500; font-size: 17px; }
         .item-date { font-size: 12px; color: #8e8e93; }
         .item-val { font-weight: 700; font-size: 18px; }
@@ -49,54 +57,31 @@
 </head>
 <body>
 
-    <div class="display-section">
-        <div id="expression"></div>
-        <div id="result">0</div>
+    <div class="balance-card">
+        <div class="label">Мій баланс</div>
+        <div id="total-balance">0.00 ₴</div>
     </div>
 
-    <div class="calc-grid">
-        <button class="special" onclick="clearAll()">AC</button>
-        <button class="special" onclick="del()">⌫</button>
-        <button class="op" onclick="addOp('/')">÷</button>
-        <button class="op" onclick="addOp('*')">×</button>
-        
-        <button onclick="addNum('7')">7</button>
-        <button onclick="addNum('8')">8</button>
-        <button onclick="addNum('9')">9</button>
-        <button class="op" onclick="addOp('-')">−</button>
-        
-        <button onclick="addNum('4')">4</button>
-        <button onclick="addNum('5')">5</button>
-        <button onclick="addNum('6')">6</button>
-        <button class="op" onclick="addOp('+')">+</button>
-        
-        <button onclick="addNum('1')">1</button>
-        <button onclick="addNum('2')">2</button>
-        <button onclick="addNum('3')">3</button>
-        <button class="op" onclick="equal()">=</button>
-        
-        <button class="zero" onclick="addNum('0')">0</button>
-        <button onclick="addNum('.')">.</button>
-    </div>
-
-    <div class="save-box">
-        <input type="text" id="note" placeholder="Що це за гроші?">
+    <div class="input-box">
+        <input type="number" id="amount" placeholder="Сума (0.00)" inputmode="decimal">
+        <input type="text" id="note" placeholder="Нотатка (напр. Зарплата)">
         <div class="save-grid">
-            <button class="btn-save in" onclick="saveRecord('plus')">↑ ПРИХІД</button>
-            <button class="btn-save out" onclick="saveRecord('minus')">↓ ВИТРАТА</button>
+            <button class="in" onclick="saveRecord('plus')">↑ ПРИХІД</button>
+            <button class="btn-out" onclick="saveRecord('minus')" style="background: var(--red);">↓ ВИТРАТА</button>
         </div>
     </div>
 
-    <div class="data-tools">
-        <button class="btn-tool" onclick="exportData()">Копіювати Backup</button>
-        <button class="btn-tool" onclick="importData()">Завантажити дані</button>
-        <button class="btn-tool" style="background: #440000;" onclick="logout()">Вихід</button>
+    <div class="tools">
+        <button class="btn-tool" onclick="exportData()">Backup</button>
+        <button class="btn-tool" onclick="importData()">Import</button>
+        <button class="btn-tool" onclick="auth.signOut(); location.reload();">Вихід</button>
     </div>
 
+    <div class="history-title">Останні транзакції</div>
     <div id="history"></div>
 
     <script>
-        // --- КОНФІГ FIREBASE (ЗАМІНІТЬ НА СВОЇ ДАНІ) ---
+        // --- КОНФІГ FIREBASE (Вставте свої ключі сюди) ---
         const firebaseConfig = {
             apiKey: "ВСТАВТЕ_ВАШ_API_KEY",
             authDomain: "ВАШ_ПРОЕКТ.firebaseapp.com",
@@ -109,49 +94,29 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // --- ЛОГІКА КАЛЬКУЛЯТОРА ---
-        let currExpr = "";
-        const resDiv = document.getElementById('result');
-        const expDiv = document.getElementById('expression');
-
-        function addNum(n) { currExpr += n; render(); }
-        function addOp(o) { if(currExpr) { currExpr += " " + o + " "; render(); } }
-        function clearAll() { currExpr = ""; resDiv.innerText = "0"; render(); }
-        function del() { currExpr = currExpr.trim().slice(0, -1); render(); }
-        function render() { expDiv.innerText = currExpr || "0"; }
-        function equal() {
-            try {
-                let val = eval(currExpr);
-                resDiv.innerText = Number.isInteger(val) ? val : val.toFixed(2);
-                currExpr = resDiv.innerText;
-            } catch { resDiv.innerText = "Помилка"; }
-        }
-
-        // --- РОБОТА З ДАНИМИ ---
         function saveRecord(type) {
             const user = auth.currentUser;
-            if(!user) return alert("Увійдіть в акаунт!");
+            if(!user) return;
             
-            const amount = parseFloat(resDiv.innerText);
+            const amount = parseFloat(document.getElementById('amount').value);
             const note = document.getElementById('note').value || (type === 'plus' ? 'Дохід' : 'Витрата');
 
-            if(amount === 0) return alert("Сума не може бути 0");
+            if(!amount || amount <= 0) return alert("Введіть суму");
 
             db.collection("users").doc(user.uid).collection("tx").add({
                 amount, note, type, date: Date.now()
             }).then(() => {
+                document.getElementById('amount').value = "";
                 document.getElementById('note').value = "";
-                clearAll();
             });
         }
 
-        // --- BACKUP ТА ЕКСПОРТ ---
         async function exportData() {
             const user = auth.currentUser;
             const snap = await db.collection("users").doc(user.uid).collection("tx").get();
             const data = snap.docs.map(doc => doc.data());
             navigator.clipboard.writeText(JSON.stringify(data));
-            alert("Всі дані скопійовано в буфер обміну!");
+            alert("Дані скопійовано!");
         }
 
         async function importData() {
@@ -160,32 +125,32 @@
             const user = auth.currentUser;
             try {
                 const data = JSON.parse(raw);
-                for(let item of data) {
-                    await db.collection("users").doc(user.uid).collection("tx").add(item);
-                }
-                alert("Дані успішно завантажені!");
-            } catch { alert("Помилка формату"); }
+                for(let item of data) await db.collection("users").doc(user.uid).collection("tx").add(item);
+                alert("Готово!");
+            } catch { alert("Помилка"); }
         }
 
-        // --- АВТОРИЗАЦІЯ ---
         auth.onAuthStateChanged(user => {
             if(user) {
                 db.collection("users").doc(user.uid).collection("tx")
                   .orderBy("date", "desc").onSnapshot(s => {
+                    let balance = 0;
                     const html = s.docs.map(doc => {
                         const d = doc.data();
+                        balance += (d.type === 'plus' ? d.amount : -d.amount);
                         return `
-                        <div class="history-item">
+                        <div class="item">
                             <div class="item-info">
                                 <span class="item-note">${d.note}</span>
-                                <span class="item-date">${new Date(d.date).toLocaleString()}</span>
+                                <span class="item-date">${new Date(d.date).toLocaleDateString()}</span>
                             </div>
                             <span class="item-val" style="color:${d.type==='plus'?'var(--green)':'var(--red)'}">
-                                ${d.type==='plus'?'+':'-'}${d.amount} ₴
+                                ${d.type==='plus'?'+':'-'}${d.amount.toFixed(2)} ₴
                             </span>
                         </div>`;
                     }).join('');
                     document.getElementById('history').innerHTML = html;
+                    document.getElementById('total-balance').innerText = balance.toFixed(2) + " ₴";
                 });
             } else {
                 const email = prompt("Email:");
@@ -193,9 +158,8 @@
                 auth.signInWithEmailAndPassword(email, pass).catch(() => auth.createUserWithEmailAndPassword(email, pass));
             }
         });
-
-        function logout() { auth.signOut(); location.reload(); }
     </script>
 </body>
 </html>
+
 
