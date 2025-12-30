@@ -3,98 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Приватна Бухгалтерія</title>
+    <title>Multi-Currency Ledger</title>
     <style>
-        :root { --bg: #000; --card: #1c1c1e; --green: #32d74b; --red: #ff453a; --accent: #0a84ff; }
-        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 20px; overflow-x: hidden; }
+        :root { --bg: #000; --card: #1c1c1e; --green: #32d74b; --red: #ff453a; --accent: #0a84ff; --gray: #2c2c2e; }
+        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; }
         
         /* Екран логіну */
-        #auth-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 1000;
-        }
-
-        /* Основний інтерфейс (схований до логіну) */
+        #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; }
         #main-content { display: none; }
 
-        .balance-card { 
-            background: linear-gradient(180deg, #2c2c2e 0%, #1c1c1e 100%);
-            padding: 30px; border-radius: 25px; text-align: center; margin-bottom: 20px; border: 1px solid #333; 
-        }
-        #total-balance { font-size: 40px; font-weight: bold; margin-top: 10px; }
+        /* Картки балансу */
+        .balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .balance-card { background: var(--card); padding: 15px; border-radius: 20px; border: 1px solid #333; text-align: center; }
+        .total-card { background: linear-gradient(180deg, #2c2c2e, #1c1c1e); padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 15px; border: 1px solid var(--accent); }
         
-        input { 
-            width: 100%; background: #2c2c2e; border: none; border-radius: 12px; 
-            color: white; padding: 15px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; 
-            outline: none; text-align: center;
-        }
+        .val { font-size: 22px; font-weight: bold; margin-top: 5px; }
+        .label { color: #8e8e93; font-size: 11px; text-transform: uppercase; }
+
+        /* Форма */
+        .input-box { background: var(--card); padding: 20px; border-radius: 25px; margin-bottom: 20px; }
+        input { width: 100%; background: var(--gray); border: none; border-radius: 12px; color: white; padding: 15px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; outline: none; }
         
+        .currency-switch { display: flex; gap: 10px; margin-bottom: 15px; }
+        .cur-btn { flex: 1; height: 40px; border-radius: 10px; border: 1px solid var(--gray); background: none; color: white; }
+        .cur-btn.active { background: var(--accent); border-color: var(--accent); }
+
         .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button { height: 55px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; }
-        .in { background: var(--green); color: #000; }
-        .out { background: var(--red); color: #fff; }
-        .btn-auth { background: var(--accent); color: white; width: 80%; margin-top: 10px; }
-        
-        .item { 
-            background: var(--card); padding: 15px; border-radius: 15px; 
-            margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
-        }
+        button { height: 55px; border-radius: 15px; border: none; font-weight: bold; cursor: pointer; }
+        .in { background: var(--green); color: black; }
+        .out { background: var(--red); color: white; }
+
+        .item { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         .date { font-size: 10px; color: #8e8e93; }
+
+        .settings { font-size: 12px; color: #444; text-align: center; margin-top: 30px; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <h2 id="auth-title">Встановіть ПІН-код</h2>
-        <p style="color: #8e8e93; font-size: 14px; margin-bottom: 20px;">Для захисту ваших даних</p>
-        <input type="password" id="pin-input" placeholder="0000" inputmode="numeric" maxlength="4" style="width: 150px; font-size: 24px; letter-spacing: 10px;">
-        <button class="btn-auth" onclick="handleAuth()">УВІЙТИ</button>
+        <h2>Введіть ПІН</h2>
+        <input type="password" id="pin-input" placeholder="0000" inputmode="numeric" maxlength="4" style="width: 120px; text-align: center; font-size: 24px;">
+        <button onclick="handleAuth()" style="background: var(--accent); color: white; width: 120px; border-radius: 10px; margin-top: 10px;">OK</button>
     </div>
 
     <div id="main-content">
-        <div class="balance-card">
-            <div style="color: #8e8e93; font-size: 14px;">ВАШ БАЛАНС</div>
-            <div id="total-balance">0.00 ₴</div>
+        <div class="total-card">
+            <div class="label">Загальний баланс (в PLN)</div>
+            <div id="grand-total" style="font-size: 32px; font-weight: 800; color: var(--accent);">0.00 zł</div>
         </div>
 
-        <input type="number" id="amount" placeholder="Сума" inputmode="decimal" style="text-align: left;">
-        <input type="text" id="note" placeholder="Нотатка" style="text-align: left;">
-        
-        <div class="btns">
-            <button class="in" onclick="addTx('plus')">↑ ПРИХІД</button>
-            <button class="out" onclick="addTx('minus')">↓ ВИТРАТА</button>
+        <div class="balance-grid">
+            <div class="balance-card">
+                <div class="label">Всього PLN</div>
+                <div id="bal-pln" class="val" style="color: white;">0.00 zł</div>
+            </div>
+            <div class="balance-card">
+                <div class="label">Всього EUR</div>
+                <div id="bal-eur" class="val" style="color: white;">0.00 €</div>
+            </div>
         </div>
 
-        <div style="margin-top: 30px;">
-            <span style="font-weight: bold; font-size: 20px;">Історія</span>
-            <div id="list" style="margin-top: 15px;"></div>
+        <div class="input-box">
+            <div class="currency-switch">
+                <button id="btn-pln" class="cur-btn active" onclick="setCur('PLN')">PLN (zł)</button>
+                <button id="btn-eur" class="cur-btn" onclick="setCur('EUR')">EUR (€)</button>
+            </div>
+            <input type="number" id="amount" placeholder="Сума" inputmode="decimal">
+            <input type="text" id="note" placeholder="Нотатка">
+            <div class="btns">
+                <button class="in" onclick="addTx('plus')">↑ ПРИХІД</button>
+                <button class="out" onclick="addTx('minus')">↓ ВИТРАТА</button>
+            </div>
         </div>
-        
-        <button onclick="localStorage.clear(); location.reload();" style="background: none; color: #444; width: 100%; margin-top: 40px; font-size: 12px;">Скинути все</button>
+
+        <div id="list"></div>
+
+        <div class="settings">
+            Курс 1€ = <input type="number" id="rate" value="4.30" step="0.01" onchange="render()" style="width: 60px; padding: 5px; display: inline; font-size: 12px; margin: 0;"> PLN
+            <br><br>
+            <span onclick="localStorage.clear(); location.reload();">Скинути всі дані</span>
+        </div>
     </div>
 
     <script>
-        let transactions = JSON.parse(localStorage.getItem('my_ledger_data')) || [];
+        let transactions = JSON.parse(localStorage.getItem('ledger_multicur')) || [];
+        let currentCurrency = 'PLN';
         const savedPin = localStorage.getItem('app_pin');
 
-        if (!savedPin) {
-            document.getElementById('auth-title').innerText = "Створіть ПІН-код";
-        } else {
-            document.getElementById('auth-title').innerText = "Введіть ПІН-код";
+        function setCur(c) {
+            currentCurrency = c;
+            document.getElementById('btn-pln').className = c === 'PLN' ? 'cur-btn active' : 'cur-btn';
+            document.getElementById('btn-eur').className = c === 'EUR' ? 'cur-btn active' : 'cur-btn';
         }
 
         function handleAuth() {
-            const input = document.getElementById('pin-input').value;
-            if (!savedPin) {
-                if (input.length >= 4) {
-                    localStorage.setItem('app_pin', input);
-                    showApp();
-                } else { alert("ПІН має бути 4 цифри"); }
+            const pin = document.getElementById('pin-input').value;
+            if(!savedPin) { 
+                if(pin.length >= 4) { localStorage.setItem('app_pin', pin); showApp(); }
             } else {
-                if (input === savedPin) {
-                    showApp();
-                } else { alert("Неправильний ПІН!"); }
+                if(pin === savedPin) showApp(); else alert("Невірно");
             }
         }
 
@@ -106,12 +114,16 @@
 
         function render() {
             const list = document.getElementById('list');
-            const totalDisplay = document.getElementById('total-balance');
+            const rate = parseFloat(document.getElementById('rate').value) || 4.30;
             list.innerHTML = "";
-            let balance = 0;
+            
+            let totalPLN = 0;
+            let totalEUR = 0;
 
-            transactions.slice().reverse().forEach((t) => {
-                balance += (t.type === 'plus' ? t.amount : -t.amount);
+            transactions.slice().reverse().forEach(t => {
+                const amt = t.type === 'plus' ? t.amount : -t.amount;
+                if(t.cur === 'PLN') totalPLN += amt; else totalEUR += amt;
+
                 const div = document.createElement('div');
                 div.className = 'item';
                 div.innerHTML = `
@@ -120,26 +132,35 @@
                         <span class="date">${t.date}</span>
                     </div>
                     <span style="font-weight:bold; color:${t.type==='plus'?'var(--green)':'var(--red)'}">
-                        ${t.type==='plus'?'+':'-'}${t.amount.toFixed(2)}
+                        ${t.type==='plus'?'+':'-'}${t.amount.toFixed(2)} ${t.cur === 'PLN' ? 'zł' : '€'}
                     </span>`;
                 list.appendChild(div);
             });
-            totalDisplay.innerText = balance.toFixed(2) + " ₴";
-            localStorage.setItem('my_ledger_data', JSON.stringify(transactions));
+
+            document.getElementById('bal-pln').innerText = totalPLN.toFixed(2) + " zł";
+            document.getElementById('bal-eur').innerText = totalEUR.toFixed(2) + " €";
+            
+            const grandTotal = totalPLN + (totalEUR * rate);
+            document.getElementById('grand-total').innerText = grandTotal.toFixed(2) + " zł";
+            
+            localStorage.setItem('ledger_multicur', JSON.stringify(transactions));
         }
 
         function addTx(type) {
             const a = parseFloat(document.getElementById('amount').value);
-            const n = document.getElementById('note').value || (type === 'plus' ? 'Дохід' : 'Витрата');
-            if (!a) return;
+            const n = document.getElementById('note').value || "Запис";
+            if(!a) return;
+
             transactions.push({
-                amount: a, note: n, type,
+                amount: a, note: n, type, cur: currentCurrency,
                 date: new Date().toLocaleString('uk-UA', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})
             });
             document.getElementById('amount').value = "";
             document.getElementById('note').value = "";
             render();
         }
+
+        if(!savedPin) document.querySelector('#auth-screen h2').innerText = "Створіть ПІН";
     </script>
 </body>
 </html>
