@@ -3,161 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Мій Баланс</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <title>My Ledger</title>
     <style>
-        :root {
-            --bg: #000000; --card: #1c1c1e; --green: #32d74b; --red: #ff453a; --gray: #2c2c2e; --accent: #0a84ff;
-        }
+        :root { --bg: #000; --card: #1c1c1e; --green: #32d74b; --red: #ff453a; --accent: #0a84ff; }
         body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 20px; }
         
-        /* Картка загального балансу */
-        .balance-card {
+        .balance-card { 
             background: linear-gradient(180deg, #2c2c2e 0%, #1c1c1e 100%);
-            padding: 30px 20px; border-radius: 25px; text-align: center; margin-bottom: 25px;
-            border: 1px solid #3a3a3c;
+            padding: 30px; border-radius: 25px; text-align: center; margin-bottom: 20px; border: 1px solid #333; 
         }
-        #total-balance { font-size: 42px; font-weight: 700; margin-top: 10px; color: white; }
-        .label { color: #8e8e93; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
-
-        /* Форма введення */
-        .input-box { background: var(--card); padding: 20px; border-radius: 25px; margin-bottom: 20px; }
-        input { 
-            width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--gray); 
-            color: white; padding: 15px 0; font-size: 18px; outline: none; margin-bottom: 15px;
-        }
-        input::placeholder { color: #48484a; }
+        #total-balance { font-size: 40px; font-weight: bold; margin-top: 10px; }
         
-        .save-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        button { 
-            height: 55px; border-radius: 16px; border: none; font-weight: 600; font-size: 16px; 
-            cursor: pointer; transition: 0.2s; 
+        input { 
+            width: 100%; background: #2c2c2e; border: none; border-radius: 12px; 
+            color: white; padding: 15px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; 
+            outline: none;
         }
-        button:active { transform: scale(0.96); opacity: 0.9; }
-        .in { background: var(--green); color: black; }
-        .out { background: var(--red); color: white; }
-
-        /* Керування даними */
-        .tools { display: flex; gap: 10px; margin-bottom: 30px; }
-        .btn-tool { flex: 1; height: 40px; font-size: 12px; background: var(--gray); color: #8e8e93; border-radius: 10px; }
-
-        /* Історія */
-        .history-title { font-size: 20px; font-weight: 600; margin-bottom: 15px; padding-left: 5px; }
+        
+        .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { height: 55px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .in { background: var(--green); color: #000; }
+        .out { background: var(--red); color: #fff; }
+        
+        .history { margin-top: 30px; }
         .item { 
-            background: var(--card); padding: 16px; border-radius: 18px; margin-bottom: 10px; 
-            display: flex; justify-content: space-between; align-items: center;
+            background: var(--card); padding: 15px; border-radius: 15px; 
+            margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
         }
-        .item-info { display: flex; flex-direction: column; gap: 4px; }
-        .item-note { font-weight: 500; font-size: 17px; }
-        .item-date { font-size: 12px; color: #8e8e93; }
-        .item-val { font-weight: 700; font-size: 18px; }
+        .item-info { display: flex; flex-direction: column; }
+        .date { font-size: 10px; color: #8e8e93; }
+        
+        .clear-btn { background: none; color: #ff453a; font-size: 12px; margin-top: 20px; width: 100%; }
     </style>
 </head>
 <body>
 
     <div class="balance-card">
-        <div class="label">Мій баланс</div>
+        <div style="color: #8e8e93; font-size: 14px;">ПОТОЧНИЙ БАЛАНС</div>
         <div id="total-balance">0.00 ₴</div>
     </div>
 
-    <div class="input-box">
-        <input type="number" id="amount" placeholder="Сума (0.00)" inputmode="decimal">
-        <input type="text" id="note" placeholder="Нотатка (напр. Зарплата)">
-        <div class="save-grid">
-            <button class="in" onclick="saveRecord('plus')">↑ ПРИХІД</button>
-            <button class="btn-out" onclick="saveRecord('minus')" style="background: var(--red);">↓ ВИТРАТА</button>
+    <input type="number" id="amount" placeholder="Сума (грн)" inputmode="decimal">
+    <input type="text" id="note" placeholder="На що витратили?">
+    
+    <div class="btns">
+        <button class="in" onclick="addTx('plus')">↑ ПРИХІД</button>
+        <button class="out" onclick="addTx('minus')">↓ ВИТРАТА</button>
+    </div>
+
+    <div class="history">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <span style="font-weight: bold; font-size: 20px;">Історія</span>
         </div>
+        <div id="list"></div>
     </div>
 
-    <div class="tools">
-        <button class="btn-tool" onclick="exportData()">Backup</button>
-        <button class="btn-tool" onclick="importData()">Import</button>
-        <button class="btn-tool" onclick="auth.signOut(); location.reload();">Вихід</button>
-    </div>
-
-    <div class="history-title">Останні транзакції</div>
-    <div id="history"></div>
+    <button class="clear-btn" onclick="clearData()">Очистити всі дані</button>
 
     <script>
-        // --- КОНФІГ FIREBASE (Вставте свої ключі сюди) ---
-        const firebaseConfig = {
-            apiKey: "ВСТАВТЕ_ВАШ_API_KEY",
-            authDomain: "ВАШ_ПРОЕКТ.firebaseapp.com",
-            projectId: "ВАШ_ПРОЕКТ_ID",
-            storageBucket: "ВАШ_ПРОЕКТ.appspot.com",
-            messagingSenderId: "ID",
-            appId: "APP_ID"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        // Завантаження даних з пам'яті телефону (LocalStorage)
+        let transactions = JSON.parse(localStorage.getItem('my_ledger_data')) || [];
 
-        function saveRecord(type) {
-            const user = auth.currentUser;
-            if(!user) return;
-            
-            const amount = parseFloat(document.getElementById('amount').value);
-            const note = document.getElementById('note').value || (type === 'plus' ? 'Дохід' : 'Витрата');
+        function render() {
+            const list = document.getElementById('list');
+            const totalDisplay = document.getElementById('total-balance');
+            list.innerHTML = "";
+            let balance = 0;
 
-            if(!amount || amount <= 0) return alert("Введіть суму");
-
-            db.collection("users").doc(user.uid).collection("tx").add({
-                amount, note, type, date: Date.now()
-            }).then(() => {
-                document.getElementById('amount').value = "";
-                document.getElementById('note').value = "";
+            transactions.slice().reverse().forEach((t, index) => {
+                balance += (t.type === 'plus' ? t.amount : -t.amount);
+                
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    <div class="item-info">
+                        <span style="font-weight: 500;">${t.note}</span>
+                        <span class="date">${t.date}</span>
+                    </div>
+                    <span style="font-weight: bold; color: ${t.type === 'plus' ? 'var(--green)' : 'var(--red)'}">
+                        ${t.type === 'plus' ? '+' : '-'}${t.amount.toFixed(2)}
+                    </span>
+                `;
+                list.appendChild(div);
             });
+
+            totalDisplay.innerText = balance.toFixed(2) + " ₴";
+            localStorage.setItem('my_ledger_data', JSON.stringify(transactions));
         }
 
-        async function exportData() {
-            const user = auth.currentUser;
-            const snap = await db.collection("users").doc(user.uid).collection("tx").get();
-            const data = snap.docs.map(doc => doc.data());
-            navigator.clipboard.writeText(JSON.stringify(data));
-            alert("Дані скопійовано!");
+        function addTx(type) {
+            const amountInput = document.getElementById('amount');
+            const noteInput = document.getElementById('note');
+            const amount = parseFloat(amountInput.value);
+            const note = noteInput.value || (type === 'plus' ? 'Дохід' : 'Витрата');
+
+            if (!amount) return;
+
+            const newTx = {
+                amount,
+                note,
+                type,
+                date: new Date().toLocaleString('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+            };
+
+            transactions.push(newTx);
+            amountInput.value = "";
+            noteInput.value = "";
+            render();
         }
 
-        async function importData() {
-            const raw = prompt("Вставте текст бекапу:");
-            if(!raw) return;
-            const user = auth.currentUser;
-            try {
-                const data = JSON.parse(raw);
-                for(let item of data) await db.collection("users").doc(user.uid).collection("tx").add(item);
-                alert("Готово!");
-            } catch { alert("Помилка"); }
-        }
-
-        auth.onAuthStateChanged(user => {
-            if(user) {
-                db.collection("users").doc(user.uid).collection("tx")
-                  .orderBy("date", "desc").onSnapshot(s => {
-                    let balance = 0;
-                    const html = s.docs.map(doc => {
-                        const d = doc.data();
-                        balance += (d.type === 'plus' ? d.amount : -d.amount);
-                        return `
-                        <div class="item">
-                            <div class="item-info">
-                                <span class="item-note">${d.note}</span>
-                                <span class="item-date">${new Date(d.date).toLocaleDateString()}</span>
-                            </div>
-                            <span class="item-val" style="color:${d.type==='plus'?'var(--green)':'var(--red)'}">
-                                ${d.type==='plus'?'+':'-'}${d.amount.toFixed(2)} ₴
-                            </span>
-                        </div>`;
-                    }).join('');
-                    document.getElementById('history').innerHTML = html;
-                    document.getElementById('total-balance').innerText = balance.toFixed(2) + " ₴";
-                });
-            } else {
-                const email = prompt("Email:");
-                const pass = prompt("Пароль:");
-                auth.signInWithEmailAndPassword(email, pass).catch(() => auth.createUserWithEmailAndPassword(email, pass));
+        function clearData() {
+            if (confirm("Видалити всі записи?")) {
+                transactions = [];
+                render();
             }
-        });
+        }
+
+        // Перший запуск
+        render();
     </script>
 </body>
 </html>
