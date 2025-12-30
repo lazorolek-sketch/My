@@ -1,59 +1,168 @@
-<script>
-    const SUPABASE_URL = "https://xukqkdbmxvghmvhjqltj.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_bIXEmqcV9w3uS5h1_97DpQ_-z_gVZ7f";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Solo Wallet</title>
+    <style>
+        :root { --bg: #000; --card: #1c1c1e; --green: #32d74b; --red: #ff453a; --accent: #0a84ff; --gray: #2c2c2e; }
+        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; }
+        
+        #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; }
+        #main-content { display: none; }
 
-    let currentCurrency = 'PLN';
+        .total-card { background: linear-gradient(180deg, #2c2c2e, #1c1c1e); padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 15px; border: 1px solid var(--accent); }
+        .balance-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .balance-card { background: var(--card); padding: 12px 5px; border-radius: 15px; border: 1px solid #333; text-align: center; }
+        .val { font-size: 15px; font-weight: bold; margin-top: 5px; }
 
-    // Функція входу
-    function handleAuth() {
-        const pinInput = document.getElementById('pin-input');
-        const pin = pinInput.value;
-        const storedPin = localStorage.getItem('app_pin_v6');
+        .input-box { background: var(--card); padding: 20px; border-radius: 25px; margin-bottom: 20px; }
+        input { width: 100%; background: var(--gray); border: none; border-radius: 12px; color: white; padding: 15px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; outline: none; }
+        
+        .currency-switch { display: flex; gap: 8px; margin-bottom: 15px; }
+        .cur-btn { flex: 1; height: 40px; border-radius: 10px; border: 1px solid var(--gray); background: none; color: #8e8e93; font-size: 12px; }
+        .cur-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
 
-        if (!storedPin) {
-            if (pin.length === 6) {
-                localStorage.setItem('app_pin_v6', pin);
-                alert("ПІН-код збережено! Тепер натисніть УВІЙТИ ще раз.");
-                pinInput.value = "";
+        .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { height: 55px; border-radius: 15px; border: none; font-weight: bold; cursor: pointer; }
+        .in { background: var(--green); color: black; }
+        .out { background: var(--red); color: white; }
+
+        .item { background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .sync-panel { display: flex; gap: 10px; margin-top: 20px; }
+        .sync-btn { flex: 1; background: var(--gray); color: #8e8e93; font-size: 11px; height: 35px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <h2 id="auth-header">Введіть ПІН (6 цифр)</h2>
+        <input type="password" id="pin-input" placeholder="••••••" inputmode="numeric" maxlength="6" style="width: 180px; text-align: center; font-size: 28px; letter-spacing: 8px;">
+        <button onclick="handleAuth()" style="background: var(--accent); color: white; width: 180px; border-radius: 12px; margin-top: 10px; height: 50px;">УВІЙТИ</button>
+    </div>
+
+    <div id="main-content">
+        <div class="total-card">
+            <div id="grand-total" style="font-size: 32px; font-weight: 800; color: var(--accent);">0.00 zł</div>
+            <div style="font-size: 10px; color: #8e8e93;">ЗАГАЛЬНИЙ БАЛАНС</div>
+        </div>
+
+        <div class="balance-grid">
+            <div class="balance-card"><div id="bal-pln" class="val">0.00</div><div style="font-size:9px">PLN</div></div>
+            <div class="balance-card"><div id="bal-eur" class="val">0.00</div><div style="font-size:9px">EUR</div></div>
+            <div class="balance-card"><div id="bal-uah" class="val">0.00</div><div style="font-size:9px">UAH</div></div>
+        </div>
+
+        <div class="input-box">
+            <div class="currency-switch">
+                <button id="btn-PLN" class="cur-btn active" onclick="setCur('PLN')">PLN</button>
+                <button id="btn-EUR" class="cur-btn" onclick="setCur('EUR')">EUR</button>
+                <button id="btn-UAH" class="cur-btn" onclick="setCur('UAH')">UAH</button>
+            </div>
+            <input type="number" id="amount" placeholder="Сума" inputmode="decimal">
+            <input type="text" id="note" placeholder="Нотатка">
+            <div class="btns">
+                <button class="in" onclick="addTx('plus')">↑ ПРИХІД</button>
+                <button class="out" onclick="addTx('minus')">↓ ВИТРАТА</button>
+            </div>
+        </div>
+
+        <div id="list"></div>
+
+        <div class="sync-panel">
+            <button class="sync-btn" onclick="exportData()">Зберегти файл</button>
+            <button class="sync-btn" onclick="document.getElementById('fileInput').click()">Завантажити файл</button>
+            <input type="file" id="fileInput" style="display:none" onchange="importData(event)">
+        </div>
+        
+        <p style="text-align:center; font-size:10px; color:#444; margin-top:20px;" onclick="localStorage.clear(); location.reload();">Скинути ПІН та дані</p>
+    </div>
+
+    <script>
+        let transactions = JSON.parse(localStorage.getItem('pure_gh_wallet')) || [];
+        let currentCurrency = 'PLN';
+        const savedPin = localStorage.getItem('app_pin_v6');
+
+        function setCur(c) {
+            currentCurrency = c;
+            ['PLN', 'EUR', 'UAH'].forEach(cur => document.getElementById('btn-' + cur).className = (cur === c ? 'cur-btn active' : 'cur-btn'));
+        }
+
+        function handleAuth() {
+            const pin = document.getElementById('pin-input').value;
+            if(!savedPin) { 
+                if(pin.length === 6) { localStorage.setItem('app_pin_v6', pin); showApp(); }
             } else {
-                alert("Для першого входу введіть 6 будь-яких цифр.");
-            }
-        } else {
-            if (pin === storedPin) {
-                showApp();
-            } else {
-                alert("Неправильний ПІН! Спробуйте ще раз.");
-                pinInput.value = "";
+                if(pin === savedPin) showApp(); else alert("Помилка!");
             }
         }
-    }
 
-    function showApp() {
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        loadData();
-    }
-
-    // Решта функцій залишається без змін (loadData, saveData, deleteItem)
-    // Тільки переконайтеся, що всюди вказана таблиця 'transactionss'
-    async function loadData() {
-        const { data, error } = await supabase.from('transactionss').select('*').order('created_at', { ascending: false });
-        if(error) {
-            console.error("Помилка Supabase:", error.message);
-            return;
+        function showApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            render();
         }
-        // ... (код рендеру списку з попередньої відповіді)
-    }
 
-    function setCur(c) {
-        currentCurrency = c;
-        ['PLN', 'EUR', 'UAH'].forEach(cur => document.getElementById('btn-' + cur).className = (cur === c ? 'cur-btn active' : 'cur-btn'));
-    }
-    
-    // Перевірка при старті: якщо ПІН вже вводили раніше (сесія не закрита)
-    // Можна додати автоматичний вхід, але краще залишити ПІН для безпеки.
-</script>
+        function render() {
+            const list = document.getElementById('list');
+            list.innerHTML = "";
+            let bal = { PLN: 0, EUR: 0, UAH: 0 };
+
+            transactions.slice().reverse().forEach(t => {
+                const amt = t.type === 'plus' ? t.amount : -t.amount;
+                bal[t.cur] += amt;
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `<div><b>${t.note}</b><br><small style="color:#666;font-size:10px">${t.date}</small></div>
+                                 <b style="color:${t.type==='plus'?'var(--green)':'var(--red)'}">${t.amount} ${t.cur}</b>`;
+                list.appendChild(div);
+            });
+
+            document.getElementById('bal-pln').innerText = bal.PLN.toFixed(2);
+            document.getElementById('bal-eur').innerText = bal.EUR.toFixed(2);
+            document.getElementById('bal-uah').innerText = bal.UAH.toFixed(2);
+            document.getElementById('grand-total').innerText = (bal.PLN + bal.EUR*4.3 + bal.UAH*0.1).toFixed(2) + " zł";
+            
+            localStorage.setItem('pure_gh_wallet', JSON.stringify(transactions));
+        }
+
+        function addTx(type) {
+            const a = parseFloat(document.getElementById('amount').value);
+            if(!a) return;
+            transactions.push({
+                amount: a, note: document.getElementById('note').value || "Запис", 
+                type, cur: currentCurrency,
+                date: new Date().toLocaleString('uk-UA', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})
+            });
+            document.getElementById('amount').value = ""; document.getElementById('note').value = "";
+            render();
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "wallet_backup.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importData(event) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                transactions = JSON.parse(e.target.result);
+                render();
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+        
+        if(!savedPin) document.getElementById('auth-header').innerText = "Створіть ПІН (6 цифр)";
+    </script>
+</body>
+</html>
+
 
 
 
