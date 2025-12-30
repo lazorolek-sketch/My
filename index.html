@@ -1,59 +1,201 @@
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pro Бухгалтерія</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --bg: #000000; --card: #1c1c1e; --accent: #ff9f0a; --green: #32d74b; --red: #ff453a; --gray: #2c2c2e;
+        }
+        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; }
+        
+        /* Дисплей */
+        .display-section { background: var(--card); padding: 25px; border-radius: 25px; text-align: right; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        #expression { color: #8e8e93; font-size: 18px; margin-bottom: 5px; min-height: 22px; }
+        #result { font-size: 48px; font-weight: 200; overflow: hidden; }
 
-<script>
-  // ВСТАВТЕ ВАШІ ДАНІ З FIREBASE ТУТ:
-  const firebaseConfig = {
-    apiKey: "ВАШ_API_KEY",
-    authDomain: "PROJECT_ID.firebaseapp.com",
-    projectId: "PROJECT_ID",
-    storageBucket: "PROJECT_ID.appspot.com",
-    messagingSenderId: "ID",
-    appId: "APP_ID"
-  };
+        /* Кнопки калькулятора */
+        .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        button { height: 65px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; transition: 0.2s; color: white; background: var(--gray); }
+        button:active { transform: scale(0.9); opacity: 0.8; }
+        .op { background: var(--accent); color: white; }
+        .special { background: #a5a5a5; color: black; }
+        .zero { grid-column: span 2; border-radius: 35px; }
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
+        /* Форма запису */
+        .save-box { background: var(--card); padding: 20px; border-radius: 25px; margin-bottom: 20px; }
+        input { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--gray); color: white; padding: 12px 0; font-size: 18px; outline: none; margin-bottom: 20px; }
+        .save-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn-save { height: 55px; border-radius: 15px; font-weight: 600; font-size: 16px; }
+        .in { background: var(--green); color: black; }
+        .out { background: var(--red); color: white; }
 
-  // Функція реєстрації/входу
-  function login() {
-    const email = prompt("Введіть пошту:");
-    const pass = prompt("Введіть пароль:");
-    auth.signInWithEmailAndPassword(email, pass).catch(() => {
-        auth.createUserWithEmailAndPassword(email, pass);
-    });
-  }
+        /* Керування даними */
+        .data-tools { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-tool { flex: 1; height: 35px; font-size: 12px; background: #3a3a3c; border-radius: 8px; }
 
-  // Запис у базу даних
-  function addTransaction(type) {
-    const user = auth.currentUser;
-    if (!user) { alert("Будь ласка, увійдіть!"); return; }
+        /* Список чеків */
+        .history-item { background: var(--card); padding: 15px; border-radius: 18px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .item-info { display: flex; flex-direction: column; }
+        .item-note { font-weight: 500; font-size: 17px; }
+        .item-date { font-size: 12px; color: #8e8e93; }
+        .item-val { font-weight: 700; font-size: 18px; }
+    </style>
+</head>
+<body>
 
-    const amount = document.getElementById('amount').value;
-    const note = document.getElementById('note').value;
+    <div class="display-section">
+        <div id="expression"></div>
+        <div id="result">0</div>
+    </div>
 
-    db.collection("users").doc(user.uid).collection("transactions").add({
-      type: type,
-      amount: parseFloat(amount),
-      note: note || "Без назви",
-      date: new Date().toLocaleString('uk-UA')
-    }).then(() => {
-      document.getElementById('amount').value = '';
-      document.getElementById('note').value = '';
-    });
-  }
+    <div class="calc-grid">
+        <button class="special" onclick="clearAll()">AC</button>
+        <button class="special" onclick="del()">⌫</button>
+        <button class="op" onclick="addOp('/')">÷</button>
+        <button class="op" onclick="addOp('*')">×</button>
+        
+        <button onclick="addNum('7')">7</button>
+        <button onclick="addNum('8')">8</button>
+        <button onclick="addNum('9')">9</button>
+        <button class="op" onclick="addOp('-')">−</button>
+        
+        <button onclick="addNum('4')">4</button>
+        <button onclick="addNum('5')">5</button>
+        <button onclick="addNum('6')">6</button>
+        <button class="op" onclick="addOp('+')">+</button>
+        
+        <button onclick="addNum('1')">1</button>
+        <button onclick="addNum('2')">2</button>
+        <button onclick="addNum('3')">3</button>
+        <button class="op" onclick="equal()">=</button>
+        
+        <button class="zero" onclick="addNum('0')">0</button>
+        <button onclick="addNum('.')">.</button>
+    </div>
 
-  // Слухач бази даних (оновлює список автоматично)
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      db.collection("users").doc(user.uid).collection("transactions")
-        .orderBy("date", "desc").onSnapshot(snapshot => {
-          renderHistory(snapshot.docs.map(doc => doc.data()));
+    <div class="save-box">
+        <input type="text" id="note" placeholder="Що це за гроші?">
+        <div class="save-grid">
+            <button class="btn-save in" onclick="saveRecord('plus')">↑ ПРИХІД</button>
+            <button class="btn-save out" onclick="saveRecord('minus')">↓ ВИТРАТА</button>
+        </div>
+    </div>
+
+    <div class="data-tools">
+        <button class="btn-tool" onclick="exportData()">Копіювати Backup</button>
+        <button class="btn-tool" onclick="importData()">Завантажити дані</button>
+        <button class="btn-tool" style="background: #440000;" onclick="logout()">Вихід</button>
+    </div>
+
+    <div id="history"></div>
+
+    <script>
+        // --- КОНФІГ FIREBASE (ЗАМІНІТЬ НА СВОЇ ДАНІ) ---
+        const firebaseConfig = {
+            apiKey: "ВСТАВТЕ_ВАШ_API_KEY",
+            authDomain: "ВАШ_ПРОЕКТ.firebaseapp.com",
+            projectId: "ВАШ_ПРОЕКТ_ID",
+            storageBucket: "ВАШ_ПРОЕКТ.appspot.com",
+            messagingSenderId: "ID",
+            appId: "APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- ЛОГІКА КАЛЬКУЛЯТОРА ---
+        let currExpr = "";
+        const resDiv = document.getElementById('result');
+        const expDiv = document.getElementById('expression');
+
+        function addNum(n) { currExpr += n; render(); }
+        function addOp(o) { if(currExpr) { currExpr += " " + o + " "; render(); } }
+        function clearAll() { currExpr = ""; resDiv.innerText = "0"; render(); }
+        function del() { currExpr = currExpr.trim().slice(0, -1); render(); }
+        function render() { expDiv.innerText = currExpr || "0"; }
+        function equal() {
+            try {
+                let val = eval(currExpr);
+                resDiv.innerText = Number.isInteger(val) ? val : val.toFixed(2);
+                currExpr = resDiv.innerText;
+            } catch { resDiv.innerText = "Помилка"; }
+        }
+
+        // --- РОБОТА З ДАНИМИ ---
+        function saveRecord(type) {
+            const user = auth.currentUser;
+            if(!user) return alert("Увійдіть в акаунт!");
+            
+            const amount = parseFloat(resDiv.innerText);
+            const note = document.getElementById('note').value || (type === 'plus' ? 'Дохід' : 'Витрата');
+
+            if(amount === 0) return alert("Сума не може бути 0");
+
+            db.collection("users").doc(user.uid).collection("tx").add({
+                amount, note, type, date: Date.now()
+            }).then(() => {
+                document.getElementById('note').value = "";
+                clearAll();
+            });
+        }
+
+        // --- BACKUP ТА ЕКСПОРТ ---
+        async function exportData() {
+            const user = auth.currentUser;
+            const snap = await db.collection("users").doc(user.uid).collection("tx").get();
+            const data = snap.docs.map(doc => doc.data());
+            navigator.clipboard.writeText(JSON.stringify(data));
+            alert("Всі дані скопійовано в буфер обміну!");
+        }
+
+        async function importData() {
+            const raw = prompt("Вставте текст бекапу:");
+            if(!raw) return;
+            const user = auth.currentUser;
+            try {
+                const data = JSON.parse(raw);
+                for(let item of data) {
+                    await db.collection("users").doc(user.uid).collection("tx").add(item);
+                }
+                alert("Дані успішно завантажені!");
+            } catch { alert("Помилка формату"); }
+        }
+
+        // --- АВТОРИЗАЦІЯ ---
+        auth.onAuthStateChanged(user => {
+            if(user) {
+                db.collection("users").doc(user.uid).collection("tx")
+                  .orderBy("date", "desc").onSnapshot(s => {
+                    const html = s.docs.map(doc => {
+                        const d = doc.data();
+                        return `
+                        <div class="history-item">
+                            <div class="item-info">
+                                <span class="item-note">${d.note}</span>
+                                <span class="item-date">${new Date(d.date).toLocaleString()}</span>
+                            </div>
+                            <span class="item-val" style="color:${d.type==='plus'?'var(--green)':'var(--red)'}">
+                                ${d.type==='plus'?'+':'-'}${d.amount} ₴
+                            </span>
+                        </div>`;
+                    }).join('');
+                    document.getElementById('history').innerHTML = html;
+                });
+            } else {
+                const email = prompt("Email:");
+                const pass = prompt("Пароль:");
+                auth.signInWithEmailAndPassword(email, pass).catch(() => auth.createUserWithEmailAndPassword(email, pass));
+            }
         });
-    } else {
-      login(); // Якщо не залогінений — просимо вхід
-    }
-  });
-</script>
+
+        function logout() { auth.signOut(); location.reload(); }
+    </script>
+</body>
+</html>
+
