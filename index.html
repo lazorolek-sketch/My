@@ -3,11 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>My Ledger</title>
+    <title>Приватна Бухгалтерія</title>
     <style>
         :root { --bg: #000; --card: #1c1c1e; --green: #32d74b; --red: #ff453a; --accent: #0a84ff; }
-        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 20px; }
+        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 20px; overflow-x: hidden; }
         
+        /* Екран логіну */
+        #auth-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+
+        /* Основний інтерфейс (схований до логіну) */
+        #main-content { display: none; }
+
         .balance-card { 
             background: linear-gradient(180deg, #2c2c2e 0%, #1c1c1e 100%);
             padding: 30px; border-radius: 25px; text-align: center; margin-bottom: 20px; border: 1px solid #333; 
@@ -17,52 +27,82 @@
         input { 
             width: 100%; background: #2c2c2e; border: none; border-radius: 12px; 
             color: white; padding: 15px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; 
-            outline: none;
+            outline: none; text-align: center;
         }
         
         .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         button { height: 55px; border-radius: 15px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; }
         .in { background: var(--green); color: #000; }
         .out { background: var(--red); color: #fff; }
+        .btn-auth { background: var(--accent); color: white; width: 80%; margin-top: 10px; }
         
-        .history { margin-top: 30px; }
         .item { 
             background: var(--card); padding: 15px; border-radius: 15px; 
             margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
         }
-        .item-info { display: flex; flex-direction: column; }
         .date { font-size: 10px; color: #8e8e93; }
-        
-        .clear-btn { background: none; color: #ff453a; font-size: 12px; margin-top: 20px; width: 100%; }
     </style>
 </head>
 <body>
 
-    <div class="balance-card">
-        <div style="color: #8e8e93; font-size: 14px;">ПОТОЧНИЙ БАЛАНС</div>
-        <div id="total-balance">0.00 ₴</div>
+    <div id="auth-screen">
+        <h2 id="auth-title">Встановіть ПІН-код</h2>
+        <p style="color: #8e8e93; font-size: 14px; margin-bottom: 20px;">Для захисту ваших даних</p>
+        <input type="password" id="pin-input" placeholder="0000" inputmode="numeric" maxlength="4" style="width: 150px; font-size: 24px; letter-spacing: 10px;">
+        <button class="btn-auth" onclick="handleAuth()">УВІЙТИ</button>
     </div>
 
-    <input type="number" id="amount" placeholder="Сума (грн)" inputmode="decimal">
-    <input type="text" id="note" placeholder="На що витратили?">
-    
-    <div class="btns">
-        <button class="in" onclick="addTx('plus')">↑ ПРИХІД</button>
-        <button class="out" onclick="addTx('minus')">↓ ВИТРАТА</button>
-    </div>
-
-    <div class="history">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <span style="font-weight: bold; font-size: 20px;">Історія</span>
+    <div id="main-content">
+        <div class="balance-card">
+            <div style="color: #8e8e93; font-size: 14px;">ВАШ БАЛАНС</div>
+            <div id="total-balance">0.00 ₴</div>
         </div>
-        <div id="list"></div>
-    </div>
 
-    <button class="clear-btn" onclick="clearData()">Очистити всі дані</button>
+        <input type="number" id="amount" placeholder="Сума" inputmode="decimal" style="text-align: left;">
+        <input type="text" id="note" placeholder="Нотатка" style="text-align: left;">
+        
+        <div class="btns">
+            <button class="in" onclick="addTx('plus')">↑ ПРИХІД</button>
+            <button class="out" onclick="addTx('minus')">↓ ВИТРАТА</button>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <span style="font-weight: bold; font-size: 20px;">Історія</span>
+            <div id="list" style="margin-top: 15px;"></div>
+        </div>
+        
+        <button onclick="localStorage.clear(); location.reload();" style="background: none; color: #444; width: 100%; margin-top: 40px; font-size: 12px;">Скинути все</button>
+    </div>
 
     <script>
-        // Завантаження даних з пам'яті телефону (LocalStorage)
         let transactions = JSON.parse(localStorage.getItem('my_ledger_data')) || [];
+        const savedPin = localStorage.getItem('app_pin');
+
+        if (!savedPin) {
+            document.getElementById('auth-title').innerText = "Створіть ПІН-код";
+        } else {
+            document.getElementById('auth-title').innerText = "Введіть ПІН-код";
+        }
+
+        function handleAuth() {
+            const input = document.getElementById('pin-input').value;
+            if (!savedPin) {
+                if (input.length >= 4) {
+                    localStorage.setItem('app_pin', input);
+                    showApp();
+                } else { alert("ПІН має бути 4 цифри"); }
+            } else {
+                if (input === savedPin) {
+                    showApp();
+                } else { alert("Неправильний ПІН!"); }
+            }
+        }
+
+        function showApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            render();
+        }
 
         function render() {
             const list = document.getElementById('list');
@@ -70,59 +110,39 @@
             list.innerHTML = "";
             let balance = 0;
 
-            transactions.slice().reverse().forEach((t, index) => {
+            transactions.slice().reverse().forEach((t) => {
                 balance += (t.type === 'plus' ? t.amount : -t.amount);
-                
                 const div = document.createElement('div');
                 div.className = 'item';
                 div.innerHTML = `
-                    <div class="item-info">
-                        <span style="font-weight: 500;">${t.note}</span>
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-weight:500;">${t.note}</span>
                         <span class="date">${t.date}</span>
                     </div>
-                    <span style="font-weight: bold; color: ${t.type === 'plus' ? 'var(--green)' : 'var(--red)'}">
-                        ${t.type === 'plus' ? '+' : '-'}${t.amount.toFixed(2)}
-                    </span>
-                `;
+                    <span style="font-weight:bold; color:${t.type==='plus'?'var(--green)':'var(--red)'}">
+                        ${t.type==='plus'?'+':'-'}${t.amount.toFixed(2)}
+                    </span>`;
                 list.appendChild(div);
             });
-
             totalDisplay.innerText = balance.toFixed(2) + " ₴";
             localStorage.setItem('my_ledger_data', JSON.stringify(transactions));
         }
 
         function addTx(type) {
-            const amountInput = document.getElementById('amount');
-            const noteInput = document.getElementById('note');
-            const amount = parseFloat(amountInput.value);
-            const note = noteInput.value || (type === 'plus' ? 'Дохід' : 'Витрата');
-
-            if (!amount) return;
-
-            const newTx = {
-                amount,
-                note,
-                type,
-                date: new Date().toLocaleString('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-            };
-
-            transactions.push(newTx);
-            amountInput.value = "";
-            noteInput.value = "";
+            const a = parseFloat(document.getElementById('amount').value);
+            const n = document.getElementById('note').value || (type === 'plus' ? 'Дохід' : 'Витрата');
+            if (!a) return;
+            transactions.push({
+                amount: a, note: n, type,
+                date: new Date().toLocaleString('uk-UA', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})
+            });
+            document.getElementById('amount').value = "";
+            document.getElementById('note').value = "";
             render();
         }
-
-        function clearData() {
-            if (confirm("Видалити всі записи?")) {
-                transactions = [];
-                render();
-            }
-        }
-
-        // Перший запуск
-        render();
     </script>
 </body>
 </html>
+
 
 
